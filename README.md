@@ -38,7 +38,7 @@ pip install -r requirements.txt
 ## ▶️ Starten
 
 ```bash
-python autog_bg_attach_configurable.py
+python ./auto.py
 ```
 
 ---
@@ -58,11 +58,7 @@ python autog_bg_attach_configurable.py
 
 ---
 
-## 🖱️ Maus-Modus
 
-```bash
-python autog_bg_attach_configurable.py --mouse
-```
 
 ---
 
@@ -87,4 +83,5 @@ python autog_bg_attach_configurable.py --noninteractive --title "Notepad" --key 
 ## 📄 Lizenz
 
 MIT License
+
 

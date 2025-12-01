@@ -1,6 +1,6 @@
 # 🖱️ Skrievo – Auto Clicker & Auto Key Presser (Windows)
 
-AutoBG ist ein leistungsstarker und flexibel konfigurierbarer Auto-Klicker & Auto-Key-Presser für Windows.  
+Skrievo – Auto Clicker & Auto Key Presser ist ein leistungsstarker und flexibel konfigurierbarer Auto-Klicker & Auto-Key-Presser für Windows.  
 Er unterstützt Tastatur- und Mausaktionen, Stealth-Modus, Fenster-Zuweisung, Hotkeys und Full-CLI-Automation.
 
 ---
@@ -23,8 +23,8 @@ Er unterstützt Tastatur- und Mausaktionen, Stealth-Modus, Fenster-Zuweisung, Ho
 
 ### 1. Repository klonen
 ```bash
-git clone https://github.com/DEINUSERNAME/AutoBG
-cd AutoBG
+git clone https://github.com/Skrievo/Skrievo-Auto-clicker
+
 ```
 
 ### 2. Abhängigkeiten installieren
@@ -87,3 +87,4 @@ python autog_bg_attach_configurable.py --noninteractive --title "Notepad" --key 
 ## 📄 Lizenz
 
 MIT License
+

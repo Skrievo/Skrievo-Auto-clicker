@@ -49,8 +49,16 @@ else:
     print(_SEP + "\n")
 
 
-class INPUTUNION(ctypes.Union):
-    _fields_ = [("ki", KEYBDINPUT)]
+# ctypes wrappers for SendInput and related helpers
+user32 = ctypes.WinDLL('user32', use_last_error=True)
+kernel32 = ctypes.WinDLL('kernel32', use_last_error=True)
+
+# Constants used for SendInput / key events
+INPUT_KEYBOARD = 1
+KEYEVENTF_EXTENDEDKEY = 0x0001
+KEYEVENTF_KEYUP = 0x0002
+KEYEVENTF_SCANCODE = 0x0008
+MAPVK_VK_TO_VSC = 0
 
 class KEYBDINPUT(ctypes.Structure):
     _fields_ = [
@@ -61,7 +69,11 @@ class KEYBDINPUT(ctypes.Structure):
         ("dwExtraInfo", ctypes.c_ulonglong),
     ]
 
+class INPUTUNION(ctypes.Union):
+    _fields_ = [("ki", KEYBDINPUT)]
+
 class INPUT(ctypes.Structure):
+    _anonymous_ = ("union",)
     _fields_ = [("type", ctypes.c_uint), ("union", INPUTUNION)]
 
 SendInput = user32.SendInput

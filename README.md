@@ -8,7 +8,7 @@ Voraussetzungen
 
 Installation (PowerShell)
 ```powershell
-cd "c:\Users\geber\Desktop\Arbeit"
+cd "c:\Users\Desktop\Arbeit"
 python -m pip install --upgrade pip
 pip install -r requirements.txt
 ```
@@ -28,3 +28,4 @@ Hinweise
 
 Sicherheits- und Berechtigungswunsch
 - Das Skript emuliert Tastendrücke und greift auf Fenster-Funktionen zu. Führe es nur in einer vertrauenswürdigen Umgebung aus.
+

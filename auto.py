@@ -11,26 +11,46 @@ try:
     import keyboard
     import win32gui
     import win32con
+    import win32api
     import win32process
 except Exception as e:
     print("Fehlende Abhängigkeit oder Import-Fehler:", e)
     print("Bitte zuerst die Anforderungen installieren: `pip install -r requirements.txt`")
     sys.exit(1)
 
-# --- Default-Verhalten (beim Start anpassbar) ---
-INTERVAL = 1.0   # alle X Sekunden
-HOLD_TIME = 0.15  # wie lange Taste gedrückt bleibt
-STEALTH_ON = True  # Stealth-Fokus standardmäßig an
-DEBUG = False
+# color output (optional)
+try:
+    import colorama
+    from colorama import Fore, Style
+    colorama.init()
+    _HAS_COLORAMA = True
+except Exception:
+    Fore = None
+    Style = None
+    _HAS_COLORAMA = False
 
-user32 = ctypes.windll.user32
-kernel32 = ctypes.windll.kernel32
+_SEP = "=" * 115
+_ASCII = r"""
+  ___________           .__                       _____          __                  .__  .__        __                 
+ /   _____/  | _________|__| _______  ______     /  _  \  __ ___/  |_  ____     ____ |  | |__| ____ |  | __ ___________ 
+ \_____  \|  |/ /\_  __ \  |/ __ \  \/ /  _ \   /  /_\  \|  |  \   __\/  _ \  _/ ___\|  | |  |/ ___\|  |/ // __ \_  __ \
+ /        \    <  |  | \/  \  ___/\   (  <_> ) /    |    \  |  /|  | (  <_> ) \  \___|  |_|  \  \___|    <\  ___/|  | \/
+/________  /__|_ \ |__|  |__|\___  >\_/ \____/  \____|__  /____/ |__|  \____/   \___  >____/__|\___  >__|_ \\___  >__|   
+        \/     \/               \/                     \/                                     
+"""
 
-# SendInput (Scancode + VK)
-INPUT_KEYBOARD = 1
-KEYEVENTF_KEYUP = 0x0002
-KEYEVENTF_SCANCODE = 0x0008
-MAPVK_VK_TO_VSC = 0
+if _HAS_COLORAMA:
+    print(Fore.RED + "\n" + _SEP)
+    print(_ASCII)
+    print(_SEP + Style.RESET_ALL + "\n")
+else:
+    print("\n" + _SEP)
+    print(_ASCII)
+    print(_SEP + "\n")
+
+
+class INPUTUNION(ctypes.Union):
+    _fields_ = [("ki", KEYBDINPUT)]
 
 class KEYBDINPUT(ctypes.Structure):
     _fields_ = [
@@ -38,12 +58,8 @@ class KEYBDINPUT(ctypes.Structure):
         ("wScan", ctypes.c_ushort),
         ("dwFlags", ctypes.c_uint),
         ("time", ctypes.c_uint),
-        # ULONG_PTR for dwExtraInfo: use c_ulonglong for compatibility
         ("dwExtraInfo", ctypes.c_ulonglong),
     ]
-
-class INPUTUNION(ctypes.Union):
-    _fields_ = [("ki", KEYBDINPUT)]
 
 class INPUT(ctypes.Structure):
     _fields_ = [("type", ctypes.c_uint), ("union", INPUTUNION)]
@@ -162,6 +178,34 @@ def press_once():
         time.sleep(0.01)
         send_vk(VK_KEY, up=True)
 
+def click_mouse_once():
+    """Führt einen Mausklick aus. Koordinaten optional setzen via MOUSE_X/MOUSE_Y."""
+    global MOUSE_X, MOUSE_Y, MOUSE_BUTTON
+    # Move cursor if coordinates provided
+    try:
+        if MOUSE_X is not None and MOUSE_Y is not None:
+            win32api.SetCursorPos((int(MOUSE_X), int(MOUSE_Y)))
+    except Exception:
+        pass
+
+    if MOUSE_BUTTON == "left":
+        win32api.mouse_event(win32con.MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0)
+        time.sleep(HOLD_TIME)
+        win32api.mouse_event(win32con.MOUSEEVENTF_LEFTUP, 0, 0, 0, 0)
+    elif MOUSE_BUTTON == "right":
+        win32api.mouse_event(win32con.MOUSEEVENTF_RIGHTDOWN, 0, 0, 0, 0)
+        time.sleep(HOLD_TIME)
+        win32api.mouse_event(win32con.MOUSEEVENTF_RIGHTUP, 0, 0, 0, 0)
+    elif MOUSE_BUTTON == "middle":
+        win32api.mouse_event(win32con.MOUSEEVENTF_MIDDLEDOWN, 0, 0, 0, 0)
+        time.sleep(HOLD_TIME)
+        win32api.mouse_event(win32con.MOUSEEVENTF_MIDDLEUP, 0, 0, 0, 0)
+
+def click_mouse_double():
+    click_mouse_once()
+    time.sleep(0.06)
+    click_mouse_once()
+
 # ====== Fenster-Handling ======
 def list_windows():
     wins = []
@@ -180,15 +224,27 @@ def list_windows():
     return sorted([(h, t) for t, h in uniq.items()], key=lambda x: x[1].lower())
 
 def pick_window():
-    items = list_windows()
-    if not items:
-        print("Keine sichtbaren Fenster gefunden."); return None, "", None
-    print("\nWähle ein Fenster (Zahl + Enter):")
-    for i, (hwnd, title) in enumerate(items):
-        print(f"{i:2d}: {title}")
+    # Loop so the user can refresh the list if desired
     while True:
+        items = list_windows()
+        if not items:
+            print("Keine sichtbaren Fenster gefunden.")
+            return None, "", None
+        print("\nWähle ein Fenster (Zahl + Enter) — oder 'r' zum Aktualisieren, 'q' zum Abbrechen:")
+        for i, (hwnd, title) in enumerate(items):
+            print(f"{i:2d}: {title}")
+        s = input("> ").strip()
+        if not s:
+            print("Ungültig. Zahl oder 'r'/'q' eingeben.")
+            continue
+        if s.lower() == 'r':
+            # refresh and show the list again
+            continue
+        if s.lower() == 'q':
+            print("Abbruch.")
+            return None, "", None
         try:
-            idx = int(input("> "))
+            idx = int(s)
             if 0 <= idx < len(items):
                 hwnd, title = items[idx]
                 _, pid = win32process.GetWindowThreadProcessId(hwnd)
@@ -196,7 +252,7 @@ def pick_window():
                 return hwnd, title, pid
         except ValueError:
             pass
-        print("Ungültig. Zahl aus Liste wählen.")
+        print("Ungültig. Zahl aus Liste wählen oder 'r' zum Aktualisieren.")
 
 def get_thread_id(hwnd):
     pid = ctypes.c_ulong()
@@ -257,12 +313,20 @@ def loop():
         now = time.time()
         if spamming and now >= next_tick and target_hwnd and win32gui.IsWindow(target_hwnd):
             next_tick = now + INTERVAL
-            if STEALTH_ON:
-                if DEBUG: print(f"[DBG] Stealth press (VK=0x{VK_KEY:02X}, SC=0x{SC_KEY:02X}, hold={HOLD_TIME}s)")
-                press_with_stealth(target_hwnd)
+            # Mouse or key action
+            if MOUSE_ENABLED:
+                if DEBUG: print(f"[DBG] Mouse click ({MOUSE_BUTTON}) at {MOUSE_X},{MOUSE_Y}")
+                if MOUSE_DOUBLE:
+                    click_mouse_double()
+                else:
+                    click_mouse_once()
             else:
-                if DEBUG: print("[DBG] PostMessage press (Hintergrund)")
-                post_message_key(target_hwnd)
+                if STEALTH_ON:
+                    if DEBUG: print(f"[DBG] Stealth press (VK=0x{VK_KEY:02X}, SC=0x{SC_KEY:02X}, hold={HOLD_TIME}s)")
+                    press_with_stealth(target_hwnd)
+                else:
+                    if DEBUG: print("[DBG] PostMessage press (Hintergrund)")
+                    post_message_key(target_hwnd)
         time.sleep(0.005)
 
 def toggle():
@@ -316,18 +380,106 @@ def change_key():
     configure_key_interactive()
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Auto key presser (Windows).")
+    parser.add_argument("--interval", type=float, help="Intervall in Sekunden")
+    parser.add_argument("--key", type=str, help="Taste (z.B. g oder F5)")
+    parser.add_argument("--title", type=str, help="Teil des Fenstertitels zum automatischen Auswählen")
+    parser.add_argument("--index", type=int, help="Fenster-Index aus der Liste (0-bas.)")
+    parser.add_argument("--noninteractive", action="store_true", help="Keine interaktiven Eingaben, nur CLI-Optionen verwenden")
+    parser.add_argument("--stealth", type=str, choices=["on","off"], help="Stealth-Fokus an/aus")
+    parser.add_argument("--debug", action="store_true", help="Debug-Ausgaben aktivieren")
+    parser.add_argument("--mouse", action="store_true", help="Mausklick statt Tastendruck aktivieren")
+    parser.add_argument("--mouse-button", type=str, choices=["left","right","middle"], default="left", help="Mausknopf")
+    parser.add_argument("--mouse-x", type=int, help="X-Koordinate für Mausklick (optional)")
+    parser.add_argument("--mouse-y", type=int, help="Y-Koordinate für Mausklick (optional)")
+    parser.add_argument("--mouse-double", action="store_true", help="Doppelklick statt Einzelklick")
+    args = parser.parse_args()
+
+# Start-Überschrift
+print("\n===========================================================================================================================")
+
+print(r"""
+  ___________           .__                       _____          __                  .__  .__        __                 
+ /   _____/  | _________|__| _______  ______     /  _  \  __ ___/  |_  ____     ____ |  | |__| ____ |  | __ ___________ 
+ \_____  \|  |/ /\_  __ \  |/ __ \  \/ /  _ \   /  /_\  \|  |  \   __\/  _ \  _/ ___\|  | |  |/ ___\|  |/ // __ \_  __ \
+ /        \    <  |  | \/  \  ___/\   (  <_> ) /    |    \  |  /|  | (  <_> ) \  \___|  |_|  \  \___|    <\  ___/|  | \/
+/_______  /__|_ \ |__|  |__|\___  >\_/ \____/  \____|__  /____/ |__|  \____/   \___  >____/__|\___  >__|_ \\___  >__|   
+        \/     \/               \/                     \/                          \/             \/     \/    \/       
+""")
+
+print("============================================================================================================================\n")
+
+# Logging
+logging.basicConfig(level=logging.DEBUG if args.debug else logging.INFO, format="[%(levelname)s] %(message)s")
+if args.debug:
+    DEBUG = True
+
+if args.interval and args.interval > 0:
+    INTERVAL = args.interval
+
+if args.stealth:
+    STEALTH_ON = (args.stealth == "on")
+
+# Key from CLI
+if args.key:
+    vk = _vk_from_char(args.key)
+    if vk:
+        VK_KEY = vk
+        SC_KEY = _sc_from_vk(VK_KEY)
+    else:
+        # try to learn single-character
+        VK_KEY = _vk_from_char(args.key)
+        SC_KEY = _sc_from_vk(VK_KEY)
+
+# Choose target window via CLI if requested
+if args.noninteractive:
+    if args.title:
+        target_hwnd, target_title, target_pid = find_window_by_title_substring(args.title)
+    elif args.index is not None:
+        items = list_windows()
+        if 0 <= args.index < len(items):
+            target_hwnd, target_title = items[args.index]
+            _, target_pid = win32process.GetWindowThreadProcessId(target_hwnd)
+            logging.info(f"Ausgewähltes Fenster: {target_title} (PID {target_pid})")
+    else:
+        logging.error("--noninteractive verwendet, aber weder --title noch --index angegeben. Abbruch.")
+        sys.exit(1)
+else:
+    # interactive default behavior
     target_hwnd, target_title, target_pid = pick_window()
     configure_key_interactive()
 
-    keyboard.add_hotkey('F9', toggle)
-    keyboard.add_hotkey('F10', stop)
-    keyboard.add_hotkey('F12', exit_app)
-    keyboard.add_hotkey('F8', choose_win)
-    keyboard.add_hotkey('F6', toggle_stealth)
-    keyboard.add_hotkey('F7', toggle_debug)
-    keyboard.add_hotkey('F4', change_interval)
-    keyboard.add_hotkey('F3', change_key)
+# Mouse CLI options
+if args.mouse:
+    MOUSE_ENABLED = True
+    MOUSE_BUTTON = args.mouse_button
+    if args.mouse_x is not None and args.mouse_y is not None:
+        MOUSE_X = args.mouse_x
+        MOUSE_Y = args.mouse_y
+    MOUSE_DOUBLE = bool(args.mouse_double)
 
-    t = threading.Thread(target=loop, daemon=True)
-    t.start()
+# Hotkeys (still useful)
+keyboard.add_hotkey('F9', toggle)
+keyboard.add_hotkey('F10', stop)
+keyboard.add_hotkey('F12', exit_app)
+keyboard.add_hotkey('F8', choose_win)
+keyboard.add_hotkey('F6', toggle_stealth)
+keyboard.add_hotkey('F7', toggle_debug)
+keyboard.add_hotkey('F4', change_interval)
+keyboard.add_hotkey('F3', change_key)
+
+# Graceful shutdown on Ctrl+C
+def _sigint_handler(signum, frame):
+    logging.info("SIGINT empfangen, beende...")
+    exit_app()
+signal.signal(signal.SIGINT, _sigint_handler)
+
+t = threading.Thread(target=loop, daemon=True)
+t.start()
+
+# Wait until exit_app sets running=False; keyboard.wait provides a simple blocking mechanism too
+try:
     keyboard.wait('F12')
+except KeyboardInterrupt:
+    exit_app()
+    

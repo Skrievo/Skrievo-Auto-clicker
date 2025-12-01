@@ -1,31 +1,30 @@
-# Auto-Key (überarbeitet)
+AutoBG – Konfigurierbarer Auto-Klicker & Auto-Key-Presser (Windows)
 
-Kurze Anleitung, um das Skript lokal unter Windows auszuführen.
+Ein leistungsstarker, vollständig konfigurierbarer Auto-Klicker &
+Auto-Key-Presser für Windows. Unterstützt Tastendrücke, ScanCodes,
+Stealth-Modus, Mausklicks, Fenster-Fokus-Wechsel, Hotkeys,
+non-interaktiven CLI-Modus und Ziel-Fenster-Erkennung.
 
-Voraussetzungen
-- Python 3.8+ installiert
-- PowerShell (Standard unter Windows)
+Features: - Hintergrund-Tastendruck (PostMessage) - Stealth-Modus -
+Voller Maus-Support - Intervall konfigurierbar - Key-Selector oder
+Lernmodus - Fenster-Auswahl - Hotkeys - Debug-Modus - ScanCode + VK
+Input - CLI-Modus
 
-Installation (PowerShell)
-```powershell
-cd "c:\Users\Desktop\Arbeit"
-python -m pip install --upgrade pip
-pip install -r requirements.txt
-```
+Installation: git clone https://github.com/DEINUSERNAME/AutoBG cd AutoBG
+python -m pip install –upgrade pip pip install -r requirements.txt
 
-Dateien
-- `auto.py` : Überarbeitete Python-Version des ursprünglichen Skripts
-- `requirements.txt` : Benötigte Python-Pakete (`keyboard`, `pywin32`)
+Starten: python autog_bg_attach_configurable.py
 
-Starten
-```powershell
-python .\auto.py
-```
+Hotkeys: F9 - Start/Stop F10 - Stop F12 - Beenden F8 - Fenster wählen
+F6 - Stealth an/aus F7 - Debug an/aus F4 - Intervall ändern F3 - Taste
+ändern
 
-Hinweise
-- Falls beim Import von `keyboard` oder `win32gui` Fehler auftreten: Stelle sicher, dass du die in `requirements.txt` gelisteten Pakete installiert hast.
-- Das alte `auto.js` im Verzeichnis enthält die ursprüngliche Datei (falls vorhanden). Die neue Hauptdatei ist `auto.py`.
+Maus-Modus: python autog_bg_attach_configurable.py –mouse
 
-Sicherheits- und Berechtigungswunsch
-- Das Skript emuliert Tastendrücke und greift auf Fenster-Funktionen zu. Führe es nur in einer vertrauenswürdigen Umgebung aus.
+CLI Beispiel: python autog_bg_attach_configurable.py –noninteractive
+–title “Notepad” –key g –interval 1.5
 
+Stealth Mode: –stealth on
+
+
+Lizenz: MIT License
